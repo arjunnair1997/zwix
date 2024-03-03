@@ -83,6 +83,7 @@ pub fn build(b: *std.Build) void {
             .root_source_file = null,
             .target = target,
         });
+        const bin_path = user_program_step.getEmittedBin();
 
         user_program_step.addCSourceFile(.{ .file = .{ .path = user_dir ++ "/" ++ prog_file ++ ".c" }, .flags = c_flags });
 
@@ -95,7 +96,8 @@ pub fn build(b: *std.Build) void {
         }
 
         user_program_step.setLinkerScriptPath(.{ .path = "user/user.ld" });
-        b.installArtifact(user_program_step);
+        // b.installArtifact(user_program_step);
+        b.getInstallStep().dependOn(&b.addInstallFile(bin_path, user_dir ++ "/_" ++ prog_file).step);
         b.default_step.dependOn(&user_program_step.step);
     }
 
