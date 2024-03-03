@@ -83,6 +83,7 @@ pub fn build(b: *std.Build) void {
             .root_source_file = null,
             .target = target,
         });
+
         user_program_step.addCSourceFile(.{ .file = .{ .path = user_dir ++ "/" ++ prog_file ++ ".c" }, .flags = c_flags });
 
         // Add the syscall entry assembly file.
@@ -94,7 +95,7 @@ pub fn build(b: *std.Build) void {
         }
 
         user_program_step.setLinkerScriptPath(.{ .path = "user/user.ld" });
-
+        b.installArtifact(user_program_step);
         b.default_step.dependOn(&user_program_step.step);
     }
 
