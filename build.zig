@@ -102,6 +102,29 @@ pub fn build(b: *std.Build) void {
         b.default_step.dependOn(&user_program_step.step);
     }
 
+    // Build mkfs. Not RISCV target.
+
+    // mkfs/mkfs: mkfs/mkfs.c $K/fs.h $K/param.h
+    // gcc -Werror -Wall -I. -o mkfs/mkfs mkfs/mkfs.c
+    const mkfs_program_step = b.addExecutable(.{
+        .name = "mkfs",
+        .root_source_file = null,
+        .target = b.host,
+    });
+    const mkfs_bin_path = mkfs_program_step.getEmittedBin();
+    const mkfs_c_flags = &[_][]const u8{
+        "-Wall",
+        "-Werror",
+        "-I.",
+    };
+    mkfs_program_step.linkLibC();
+    // mkfs_program_step.addCSourceFile(.{ .file = .{ .path = "kernel/types.h" }, .flags = mkfs_c_flags });
+    mkfs_program_step.addCSourceFile(.{ .file = .{ .path = "mkfs/mkfs.c" }, .flags = mkfs_c_flags });
+    // mkfs_program_step.addCSourceFile(.{ .file = .{ .path = "kernel/fs.h" }, .flags = mkfs_c_flags });
+    // mkfs_program_step.addCSourceFile(.{ .file = .{ .path = "kernel/param.h" }, .flags = mkfs_c_flags });
+    b.getInstallStep().dependOn(&b.addInstallFile(mkfs_bin_path, "mkfs/mkfs").step);
+    b.default_step.dependOn(&mkfs_program_step.step);
+
     // // TODO(arjun): Use this so that the release mode can be passed in using the cli.
     // _ = b.standardReleaseOptions();
 
