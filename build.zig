@@ -83,6 +83,7 @@ pub fn build(b: *std.Build) void {
             .root_source_file = null,
             .target = target,
         });
+        user_program_step.link_z_max_page_size = 4096;
         const bin_path = user_program_step.getEmittedBin();
 
         user_program_step.addCSourceFile(.{ .file = .{ .path = user_dir ++ "/" ++ prog_file ++ ".c" }, .flags = c_flags });

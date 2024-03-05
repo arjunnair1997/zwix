@@ -40,27 +40,32 @@ exec(char *path, char **argv)
   ilock(ip);
 
   // Check ELF header
-  if(readi(ip, 0, (uint64)&elf, 0, sizeof(elf)) != sizeof(elf))
+  if(readi(ip, 0, (uint64)&elf, 0, sizeof(elf)) != sizeof(elf)) {
     goto bad;
-
-  if(elf.magic != ELF_MAGIC)
+  }
+  if(elf.magic != ELF_MAGIC) {
     goto bad;
+  }
 
   if((pagetable = proc_pagetable(p)) == 0)
     goto bad;
 
   // Load program into memory.
   for(i=0, off=elf.phoff; i<elf.phnum; i++, off+=sizeof(ph)){
-    if(readi(ip, 0, (uint64)&ph, off, sizeof(ph)) != sizeof(ph))
+    if(readi(ip, 0, (uint64)&ph, off, sizeof(ph)) != sizeof(ph)) {
       goto bad;
+    }
     if(ph.type != ELF_PROG_LOAD)
       continue;
-    if(ph.memsz < ph.filesz)
+    if(ph.memsz < ph.filesz) {
       goto bad;
-    if(ph.vaddr + ph.memsz < ph.vaddr)
+    } 
+    if(ph.vaddr + ph.memsz < ph.vaddr) {
       goto bad;
-    if(ph.vaddr % PGSIZE != 0)
+    }
+    if(ph.vaddr % PGSIZE != 0) {
       goto bad;
+    }
     uint64 sz1;
     if((sz1 = uvmalloc(pagetable, sz, ph.vaddr + ph.memsz, flags2perm(ph.flags))) == 0)
       goto bad;
@@ -80,8 +85,9 @@ exec(char *path, char **argv)
   // Use the second as the user stack.
   sz = PGROUNDUP(sz);
   uint64 sz1;
-  if((sz1 = uvmalloc(pagetable, sz, sz + 2*PGSIZE, PTE_W)) == 0)
-    goto bad;
+  if((sz1 = uvmalloc(pagetable, sz, sz + 2*PGSIZE, PTE_W)) == 0) {
+    goto bad; 
+  }
   sz = sz1;
   uvmclear(pagetable, sz-2*PGSIZE);
   sp = sz;
@@ -89,25 +95,34 @@ exec(char *path, char **argv)
 
   // Push argument strings, prepare rest of stack in ustack.
   for(argc = 0; argv[argc]; argc++) {
-    if(argc >= MAXARG)
+    if(argc >= MAXARG) {
       goto bad;
+    }
+      
     sp -= strlen(argv[argc]) + 1;
     sp -= sp % 16; // riscv sp must be 16-byte aligned
-    if(sp < stackbase)
+    if(sp < stackbase) {
       goto bad;
-    if(copyout(pagetable, sp, argv[argc], strlen(argv[argc]) + 1) < 0)
+    }
+      
+    if(copyout(pagetable, sp, argv[argc], strlen(argv[argc]) + 1) < 0) {
       goto bad;
+    }
+      
     ustack[argc] = sp;
   }
   ustack[argc] = 0;
 
+
   // push the array of argv[] pointers.
   sp -= (argc+1) * sizeof(uint64);
   sp -= sp % 16;
-  if(sp < stackbase)
+  if(sp < stackbase) {
     goto bad;
-  if(copyout(pagetable, sp, (char *)ustack, (argc+1)*sizeof(uint64)) < 0)
+  }
+  if(copyout(pagetable, sp, (char *)ustack, (argc+1)*sizeof(uint64)) < 0) {
     goto bad;
+  }
 
   // arguments to user main(argc, argv)
   // argc is returned via the system call return
