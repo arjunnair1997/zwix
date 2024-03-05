@@ -118,10 +118,7 @@ pub fn build(b: *std.Build) void {
         "-I.",
     };
     mkfs_program_step.linkLibC();
-    // mkfs_program_step.addCSourceFile(.{ .file = .{ .path = "kernel/types.h" }, .flags = mkfs_c_flags });
     mkfs_program_step.addCSourceFile(.{ .file = .{ .path = "mkfs/mkfs.c" }, .flags = mkfs_c_flags });
-    // mkfs_program_step.addCSourceFile(.{ .file = .{ .path = "kernel/fs.h" }, .flags = mkfs_c_flags });
-    // mkfs_program_step.addCSourceFile(.{ .file = .{ .path = "kernel/param.h" }, .flags = mkfs_c_flags });
     b.getInstallStep().dependOn(&b.addInstallFile(mkfs_bin_path, "mkfs/mkfs").step);
     b.default_step.dependOn(&mkfs_program_step.step);
 
