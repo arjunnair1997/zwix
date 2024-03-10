@@ -125,6 +125,7 @@ pub fn build(b: *std.Build) void {
         user_program_step.addCSourceFile(.{ .file = .{ .path = user_dir ++ "/" ++ prog_file ++ ".c" }, .flags = c_flags });
 
         // Add the syscall entry assembly file.
+        user_program_step.step.dependOn(&gen_usys_s.step);
         user_program_step.addAssemblyFile(.{ .path = user_dir ++ "/" ++ "usys.S" });
 
         // Add the rest of the lib files.
