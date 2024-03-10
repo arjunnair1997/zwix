@@ -18,6 +18,7 @@ const mat4x4 = [4][4]f32{
 };
 
 const user_dir = "user";
+const kernel_dir = "kernel";
 
 // These are needed for userProgs.
 const user_libs = &[_][]const u8{
@@ -26,7 +27,7 @@ const user_libs = &[_][]const u8{
     "umalloc",
 };
 
-const usys_perl_file = "user/usys.pl";
+const usys_perl_file = user_dir ++ "/" ++ "usys.pl";
 
 // These depend on userLib.
 const user_progs = &[_][]const u8{
@@ -46,6 +47,36 @@ const user_progs = &[_][]const u8{
     "grind",
     "wc",
     "zombie",
+};
+
+const kernel_progs = &[_][]const u8{
+    "entry",
+    "start",
+    "console",
+    "printf",
+    "uart",
+    "kalloc",
+    "spinlock",
+    "string",
+    "main",
+    "vm",
+    "proc",
+    "swtch",
+    "trampoline",
+    "trap",
+    "syscall",
+    "sysproc",
+    "bio",
+    "fs",
+    "log",
+    "sleeplock",
+    "file",
+    "pipe",
+    "exec",
+    "sysfile",
+    "kernelvec",
+    "plic",
+    "virtio_disk",
 };
 
 const c_flags = &[_][]const u8{
@@ -73,7 +104,7 @@ pub fn build(b: *std.Build) void {
 
     // Generate the assembly for syscall entrypoints from user/usys.pl.
     const gen_usys_s = b.addSystemCommand(&[_][]const u8{"./user/usys.sh"});
-    gen_usys_s.extra_file_dependencies = &[_][]const u8{ "user/usys.pl", "user/usys.sh" };
+    gen_usys_s.extra_file_dependencies = &[_][]const u8{ user_dir ++ "/" ++ "usys.pl", user_dir ++ "/" ++ "usys.sh" };
     b.default_step.dependOn(&gen_usys_s.step);
 
     var user_exec_paths = std.ArrayList([]const u8).init(b.allocator);
@@ -94,14 +125,14 @@ pub fn build(b: *std.Build) void {
         user_program_step.addCSourceFile(.{ .file = .{ .path = user_dir ++ "/" ++ prog_file ++ ".c" }, .flags = c_flags });
 
         // Add the syscall entry assembly file.
-        user_program_step.addAssemblyFile(.{ .path = "user/usys.S" });
+        user_program_step.addAssemblyFile(.{ .path = user_dir ++ "/" ++ "usys.S" });
 
         // Add the rest of the lib files.
         inline for (user_libs) |lib_file| {
             user_program_step.addCSourceFile(.{ .file = .{ .path = user_dir ++ "/" ++ lib_file ++ ".c" }, .flags = c_flags });
         }
 
-        user_program_step.setLinkerScriptPath(.{ .path = "user/user.ld" });
+        user_program_step.setLinkerScriptPath(.{ .path = user_dir ++ "/" ++ "user.ld" });
         const exec_path = user_dir ++ "/_" ++ prog_file;
         user_exec_paths.append(exec_path) catch unreachable;
         const install_user_exec_step = &b.addInstallFile(bin_path, exec_path).step;
@@ -140,7 +171,7 @@ pub fn build(b: *std.Build) void {
     defer fs_img_args.deinit();
 
     inline for (user_progs) |file| {
-        run_mkfs.addArg("zig-out/" ++ "user/_" ++ file);
+        run_mkfs.addArg("zig-out/" ++ user_dir ++ "/" ++ "_" ++ file);
     }
     b.default_step.dependOn(&run_mkfs.step);
 
@@ -151,7 +182,7 @@ pub fn build(b: *std.Build) void {
     // fs_img_args.append("README") catch unreachable;
 
     // inline for (user_progs) |file| {
-    //     fs_img_args.append("zig-out/" ++ "user/_" ++ file) catch unreachable;
+    //     fs_img_args.append("zig-out/" ++ user_dir ++ "/" ++ "_" ++ file) catch unreachable;
     // }
 
     // const fs_img_args_slice = fs_img_args.toOwnedSlice() catch unreachable;
