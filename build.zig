@@ -76,6 +76,11 @@ pub fn build(b: *std.Build) void {
     gen_usys_s.extra_file_dependencies = &[_][]const u8{ "user/usys.pl", "user/usys.sh" };
     b.default_step.dependOn(&gen_usys_s.step);
 
+    var user_exec_paths = std.ArrayList([]const u8).init(b.allocator);
+    defer user_exec_paths.deinit();
+    var user_install_steps = std.ArrayList(*std.Build.Step).init(b.allocator);
+    defer user_install_steps.deinit();
+
     // Build the user programs.
     inline for (user_progs) |prog_file| {
         const user_program_step = b.addExecutable(.{
@@ -97,15 +102,15 @@ pub fn build(b: *std.Build) void {
         }
 
         user_program_step.setLinkerScriptPath(.{ .path = "user/user.ld" });
-        // b.installArtifact(user_program_step);
-        b.getInstallStep().dependOn(&b.addInstallFile(bin_path, user_dir ++ "/_" ++ prog_file).step);
+        const exec_path = user_dir ++ "/_" ++ prog_file;
+        user_exec_paths.append(exec_path) catch unreachable;
+        const install_user_exec_step = &b.addInstallFile(bin_path, exec_path).step;
+        user_install_steps.append(install_user_exec_step) catch unreachable;
+        b.getInstallStep().dependOn(install_user_exec_step);
         b.default_step.dependOn(&user_program_step.step);
     }
 
     // Build mkfs. Not RISCV target.
-
-    // mkfs/mkfs: mkfs/mkfs.c $K/fs.h $K/param.h
-    // gcc -Werror -Wall -I. -o mkfs/mkfs mkfs/mkfs.c
     const mkfs_program_step = b.addExecutable(.{
         .name = "mkfs",
         .root_source_file = null,
@@ -120,7 +125,40 @@ pub fn build(b: *std.Build) void {
     mkfs_program_step.linkLibC();
     mkfs_program_step.addCSourceFile(.{ .file = .{ .path = "mkfs/mkfs.c" }, .flags = mkfs_c_flags });
     b.getInstallStep().dependOn(&b.addInstallFile(mkfs_bin_path, "mkfs/mkfs").step);
-    b.default_step.dependOn(&mkfs_program_step.step);
+    // b.default_step.dependOn(&mkfs_program_step.step);
+
+    const run_mkfs = b.addRunArtifact(mkfs_program_step);
+    run_mkfs.addArg("fs.img");
+    run_mkfs.addArg("README");
+
+    // Wait for the user installation to finish.
+    for (user_install_steps.items) |item| {
+        run_mkfs.step.dependOn(item);
+    }
+
+    var fs_img_args = std.ArrayList([]const u8).init(b.allocator);
+    defer fs_img_args.deinit();
+
+    inline for (user_progs) |file| {
+        run_mkfs.addArg("zig-out/" ++ "user/_" ++ file);
+    }
+    b.default_step.dependOn(&run_mkfs.step);
+
+    // var fs_img_args = std.ArrayList([]const u8).init(b.allocator);
+    // defer fs_img_args.deinit();
+
+    // fs_img_args.append("fs.img") catch unreachable;
+    // fs_img_args.append("README") catch unreachable;
+
+    // inline for (user_progs) |file| {
+    //     fs_img_args.append("zig-out/" ++ "user/_" ++ file) catch unreachable;
+    // }
+
+    // const fs_img_args_slice = fs_img_args.toOwnedSlice() catch unreachable;
+    // const fs_img_step = b.addSystemCommand(fs_img_args_slice);
+    // fs_img_step.extra_file_dependencies = fs_img_args_slice;
+    // fs_img_step.step.dependOn(&mkfs_program_step.step);
+    // b.default_step.dependOn(&fs_img_step.step);
 
     // // TODO(arjun): Use this so that the release mode can be passed in using the cli.
     // _ = b.standardReleaseOptions();
