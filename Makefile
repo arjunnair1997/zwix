@@ -93,9 +93,6 @@ tags: $(OBJS) _init
 # 	$(LD) $(LDFLAGS) -N -e main -Ttext 0 -o $U/_forktest $U/forktest.o $U/ulib.o $U/usys.o
 # 	$(OBJDUMP) -S $U/_forktest > $U/forktest.asm
 
-mkfs/mkfs: mkfs/mkfs.c $K/fs.h $K/param.h
-	gcc -Werror -Wall -I. -o mkfs/mkfs mkfs/mkfs.c
-
 # Prevent deletion of intermediate files, e.g. cat.o, after first build, so
 # that disk image changes after first build are persistent until clean.  More
 # details:
@@ -120,8 +117,8 @@ UPROGS=\
 	zig-out/$U/_wc\
 	zig-out/$U/_zombie\
 
-fs.img: mkfs/mkfs README
-	mkfs/mkfs fs.img README $(UPROGS)
+fs.img: README
+	zig-out/mkfs/mkfs fs.img README $(UPROGS)
 
 -include kernel/*.d user/*.d
 
