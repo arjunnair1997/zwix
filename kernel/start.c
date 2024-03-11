@@ -21,9 +21,11 @@ void
 start()
 {
   // set M Previous Privilege mode to Supervisor, for mret.
-  unsigned long x = r_mstatus();
-  x &= ~MSTATUS_MPP_MASK;
-  x |= MSTATUS_MPP_S;
+  uint64 x = r_mstatus();
+  uint64 status_mask = MSTATUS_MPP_MASK;
+  x &= ~status_mask;
+  uint64 supervisor_status = MSTATUS_MPP_S;
+  x |= supervisor_status;
   w_mstatus(x);
 
   // set M Exception Program Counter to main, for mret.
@@ -40,7 +42,8 @@ start()
 
   // configure Physical Memory Protection to give supervisor mode
   // access to all of physical memory.
-  w_pmpaddr0(0x3fffffffffffffull);
+  uint64 mem = 0x3fffffffffffff;
+  w_pmpaddr0(mem);
   w_pmpcfg0(0xf);
 
   // ask for clock interrupts.

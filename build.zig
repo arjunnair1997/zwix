@@ -181,16 +181,19 @@ pub fn build(b: *std.Build) void {
     kernel_program_step.link_z_max_page_size = 4096;
     const kernel_bin_path = kernel_program_step.getEmittedBin();
     kernel_program_step.setLinkerScriptPath(.{ .path = kernel_dir ++ "/" ++ "kernel.ld" });
-    const exec_path = kernel_dir ++ "/kernel";
-    const install_kernel_exec_step = &b.addInstallFile(kernel_bin_path, exec_path).step;
-    b.getInstallStep().dependOn(install_kernel_exec_step);
+    // kernel_program_step.entry = .{ .symbol_name = "_entry" };
+    kernel_program_step.setVerboseLink(true);
 
-    inline for (kernel_c_progs) |prog_file| {
-        kernel_program_step.addCSourceFile(.{ .file = .{ .path = kernel_dir ++ "/" ++ prog_file ++ ".c" }, .flags = c_flags });
-    }
+    // It is necessary that the asm_progs are added before, because we want entry
     inline for (kernel_asm_progs) |prog_file| {
         kernel_program_step.addAssemblyFile(.{ .path = kernel_dir ++ "/" ++ prog_file ++ ".S" });
     }
+    inline for (kernel_c_progs) |prog_file| {
+        kernel_program_step.addCSourceFile(.{ .file = .{ .path = kernel_dir ++ "/" ++ prog_file ++ ".c" }, .flags = c_flags });
+    }
+    const exec_path = kernel_dir ++ "/kernel";
+    const install_kernel_exec_step = &b.addInstallFile(kernel_bin_path, exec_path).step;
+    b.getInstallStep().dependOn(install_kernel_exec_step);
     b.default_step.dependOn(&kernel_program_step.step);
 
     // // TODO(arjun): Use this so that the release mode can be passed in using the cli.

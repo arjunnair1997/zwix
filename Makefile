@@ -76,8 +76,9 @@ LDFLAGS = -z max-page-size=4096
 $K/kernel: $(OBJS) $K/kernel.ld
 	$(LD) $(LDFLAGS) -T $K/kernel.ld -o zig-out/$K/kernel $(OBJS)
 
-# $(OBJDUMP) -S $K/kernel > $K/kernel.asm
-# $(OBJDUMP) -t $K/kernel | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $K/kernel.sym
+$K/kernel-obj:
+	$(OBJDUMP) -S zig-out/$K/kernel > zig-out/$K/kernel.asm
+	$(OBJDUMP) -t zig-out/$K/kernel | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > zig-out/$K/kernel.sym
 
 # Looks like changes to initcode.S must be manually compiled and copy pasted into the initcode array
 # in the kernel.
@@ -141,8 +142,9 @@ QEMUOPTS = -machine virt -bios none -kernel zig-out/$K/kernel -m 128M -smp $(CPU
 QEMUOPTS += -global virtio-mmio.force-legacy=false
 QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0
 QEMUOPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
+# QEMUOPTS += -singlestep -d nochain,cpu
 
-qemu:
+qemu: $K/kernel-obj
 	$(QEMU) $(QEMUOPTS)
 
 .gdbinit: .gdbinit.tmpl-riscv
