@@ -74,9 +74,10 @@ endif
 LDFLAGS = -z max-page-size=4096
 
 $K/kernel: $(OBJS) $K/kernel.ld
-	$(LD) $(LDFLAGS) -T $K/kernel.ld -o $K/kernel $(OBJS) 
-	$(OBJDUMP) -S $K/kernel > $K/kernel.asm
-	$(OBJDUMP) -t $K/kernel | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $K/kernel.sym
+	$(LD) $(LDFLAGS) -T $K/kernel.ld -o zig-out/$K/kernel $(OBJS)
+
+# $(OBJDUMP) -S $K/kernel > $K/kernel.asm
+# $(OBJDUMP) -t $K/kernel | sed '1,/SYMBOL TABLE/d; s/ .* / /; /^$$/d' > $K/kernel.sym
 
 # Looks like changes to initcode.S must be manually compiled and copy pasted into the initcode array
 # in the kernel.
@@ -121,8 +122,8 @@ UPROGS=\
 clean: 
 	rm -f *.tex *.dvi *.idx *.aux *.log *.ind *.ilg \
 	*/*.o */*.d */*.asm */*.sym \
-	$U/initcode $U/initcode.out $K/kernel fs.img \
-	mkfs/mkfs .gdbinit \
+	$U/initcode $U/initcode.out zig-out/$K/kernel fs.img \
+	zig-out/mkfs/mkfs .gdbinit \
         $U/usys.S \
 	$(UPROGS)
 
@@ -136,17 +137,17 @@ ifndef CPUS
 CPUS := 3
 endif
 
-QEMUOPTS = -machine virt -bios none -kernel $K/kernel -m 128M -smp $(CPUS) -nographic
+QEMUOPTS = -machine virt -bios none -kernel zig-out/$K/kernel -m 128M -smp $(CPUS) -nographic
 QEMUOPTS += -global virtio-mmio.force-legacy=false
 QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0
 QEMUOPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 
-qemu: $K/kernel
+qemu:
 	$(QEMU) $(QEMUOPTS)
 
 .gdbinit: .gdbinit.tmpl-riscv
 	sed "s/:1234/:$(GDBPORT)/" < $^ > $@
 
-# qemu-gdb: $K/kernel .gdbinit fs.img
-# 	@echo "*** Now run 'gdb' in another window." 1>&2
-# 	$(QEMU) $(QEMUOPTS) -S $(QEMUGDB)
+qemu-gdb: .gdbinit
+	@echo "*** Now run 'gdb' in another window." 1>&2
+	$(QEMU) $(QEMUOPTS) -S $(QEMUGDB)

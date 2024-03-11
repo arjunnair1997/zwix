@@ -10,13 +10,6 @@ const riscv = CrossTarget{
     .cpu_model = .determined_by_cpu_arch,
 };
 
-const mat4x4 = [4][4]f32{
-    [_]f32{ 1.0, 0.0, 0.0, 0.0 },
-    [_]f32{ 0.0, 1.0, 0.0, 1.0 },
-    [_]f32{ 0.0, 0.0, 1.0, 0.0 },
-    [_]f32{ 0.0, 0.0, 0.0, 1.0 },
-};
-
 const user_dir = "user";
 const kernel_dir = "kernel";
 
@@ -49,8 +42,7 @@ const user_progs = &[_][]const u8{
     "zombie",
 };
 
-const kernel_progs = &[_][]const u8{
-    "entry",
+const kernel_c_progs = &[_][]const u8{
     "start",
     "console",
     "printf",
@@ -61,8 +53,6 @@ const kernel_progs = &[_][]const u8{
     "main",
     "vm",
     "proc",
-    "swtch",
-    "trampoline",
     "trap",
     "syscall",
     "sysproc",
@@ -74,9 +64,15 @@ const kernel_progs = &[_][]const u8{
     "pipe",
     "exec",
     "sysfile",
-    "kernelvec",
     "plic",
     "virtio_disk",
+};
+
+const kernel_asm_progs = &[_][]const u8{
+    "entry",
+    "kernelvec",
+    "swtch",
+    "trampoline",
 };
 
 const c_flags = &[_][]const u8{
@@ -176,21 +172,26 @@ pub fn build(b: *std.Build) void {
     }
     b.default_step.dependOn(&run_mkfs.step);
 
-    // var fs_img_args = std.ArrayList([]const u8).init(b.allocator);
-    // defer fs_img_args.deinit();
+    // Build the kernel.
+    const kernel_program_step = b.addExecutable(.{
+        .name = "kernel",
+        .root_source_file = null,
+        .target = target,
+    });
+    kernel_program_step.link_z_max_page_size = 4096;
+    const kernel_bin_path = kernel_program_step.getEmittedBin();
+    kernel_program_step.setLinkerScriptPath(.{ .path = kernel_dir ++ "/" ++ "kernel.ld" });
+    const exec_path = kernel_dir ++ "/kernel";
+    const install_kernel_exec_step = &b.addInstallFile(kernel_bin_path, exec_path).step;
+    b.getInstallStep().dependOn(install_kernel_exec_step);
 
-    // fs_img_args.append("fs.img") catch unreachable;
-    // fs_img_args.append("README") catch unreachable;
-
-    // inline for (user_progs) |file| {
-    //     fs_img_args.append("zig-out/" ++ user_dir ++ "/" ++ "_" ++ file) catch unreachable;
-    // }
-
-    // const fs_img_args_slice = fs_img_args.toOwnedSlice() catch unreachable;
-    // const fs_img_step = b.addSystemCommand(fs_img_args_slice);
-    // fs_img_step.extra_file_dependencies = fs_img_args_slice;
-    // fs_img_step.step.dependOn(&mkfs_program_step.step);
-    // b.default_step.dependOn(&fs_img_step.step);
+    inline for (kernel_c_progs) |prog_file| {
+        kernel_program_step.addCSourceFile(.{ .file = .{ .path = kernel_dir ++ "/" ++ prog_file ++ ".c" }, .flags = c_flags });
+    }
+    inline for (kernel_asm_progs) |prog_file| {
+        kernel_program_step.addAssemblyFile(.{ .path = kernel_dir ++ "/" ++ prog_file ++ ".S" });
+    }
+    b.default_step.dependOn(&kernel_program_step.step);
 
     // // TODO(arjun): Use this so that the release mode can be passed in using the cli.
     // _ = b.standardReleaseOptions();
