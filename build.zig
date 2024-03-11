@@ -153,7 +153,6 @@ pub fn build(b: *std.Build) void {
     mkfs_program_step.linkLibC();
     mkfs_program_step.addCSourceFile(.{ .file = .{ .path = "mkfs/mkfs.c" }, .flags = mkfs_c_flags });
     b.getInstallStep().dependOn(&b.addInstallFile(mkfs_bin_path, "mkfs/mkfs").step);
-    // b.default_step.dependOn(&mkfs_program_step.step);
 
     const run_mkfs = b.addRunArtifact(mkfs_program_step);
     run_mkfs.addArg("fs.img");
@@ -181,8 +180,6 @@ pub fn build(b: *std.Build) void {
     kernel_program_step.link_z_max_page_size = 4096;
     const kernel_bin_path = kernel_program_step.getEmittedBin();
     kernel_program_step.setLinkerScriptPath(.{ .path = kernel_dir ++ "/" ++ "kernel.ld" });
-    // kernel_program_step.entry = .{ .symbol_name = "_entry" };
-    kernel_program_step.setVerboseLink(true);
 
     // It is necessary that the asm_progs are added before, because we want entry
     inline for (kernel_asm_progs) |prog_file| {
