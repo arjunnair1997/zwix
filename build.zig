@@ -99,6 +99,8 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{ .whitelist = &[_]CrossTarget{riscv}, .default_target = riscv });
 
     // Generate the assembly for syscall entrypoints from user/usys.pl.
+    //
+    // TODO(arjun): Replace bash script with zig code.
     const gen_usys_s = b.addSystemCommand(&[_][]const u8{"./user/usys.sh"});
     gen_usys_s.extra_file_dependencies = &[_][]const u8{ user_dir ++ "/" ++ "usys.pl", user_dir ++ "/" ++ "usys.sh" };
     b.default_step.dependOn(&gen_usys_s.step);
