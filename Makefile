@@ -121,9 +121,8 @@ UPROGS=\
 -include kernel/*.d user/*.d
 
 clean: 
-	rm -f *.tex *.dvi *.idx *.aux *.log *.ind *.ilg \
-	*/*.o */*.d */*.asm */*.sym \
-	$U/initcode $U/initcode.out zig-out/$K/kernel fs.img \
+	rm -f \
+	fs.img \
 	zig-out/mkfs/mkfs .gdbinit \
         $U/usys.S \
 	$(UPROGS)
@@ -144,7 +143,7 @@ QEMUOPTS += -drive file=fs.img,if=none,format=raw,id=x0
 QEMUOPTS += -device virtio-blk-device,drive=x0,bus=virtio-mmio-bus.0
 # QEMUOPTS += -singlestep -d nochain,cpu
 
-qemu: $K/kernel-obj
+qemu:
 	$(QEMU) $(QEMUOPTS)
 
 .gdbinit: .gdbinit.tmpl-riscv

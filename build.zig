@@ -68,6 +68,8 @@ const kernel_c_progs = &[_][]const u8{
     "virtio_disk",
 };
 
+// entry must be first; we want it to be passed in as the first
+// argument to the linker so that it is placed at 0x80000000.
 const kernel_asm_progs = &[_][]const u8{
     "entry",
     "kernelvec",
@@ -183,7 +185,8 @@ pub fn build(b: *std.Build) void {
     const kernel_bin_path = kernel_program_step.getEmittedBin();
     kernel_program_step.setLinkerScriptPath(.{ .path = kernel_dir ++ "/" ++ "kernel.ld" });
 
-    // It is necessary that the asm_progs are added before, because we want entry
+    // It is necessary that the asm_progs are added before, because we want entry to be placed
+    // at 0x80000000.
     inline for (kernel_asm_progs) |prog_file| {
         kernel_program_step.addAssemblyFile(.{ .path = kernel_dir ++ "/" ++ prog_file ++ ".S" });
     }
@@ -195,89 +198,21 @@ pub fn build(b: *std.Build) void {
     b.getInstallStep().dependOn(install_kernel_exec_step);
     b.default_step.dependOn(&kernel_program_step.step);
 
-    // // TODO(arjun): Use this so that the release mode can be passed in using the cli.
-    // _ = b.standardReleaseOptions();
+    const cleanup_step = b.step("clean", "Remove build artifacts");
+    cleanup_step.makeFn = deleteFiles;
+}
 
-    // const exee = b.addExecutable("example", null);
-    // exee.addCSourceFile("main.c", &[_][]const u8{});
-    // exee.addCSourceFile("buffer.c", &[_][]const u8{});
+fn deleteFiles(_: *std.Build.Step, _: *std.Progress.Node) !void {
+    const cwd = std.fs.cwd();
 
-    // // Standard optimization options allow the person running `zig build` to select
-    // // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall. Here we do not
-    // // set a preferred release mode, allowing the user to decide how to optimize.
-    // const optimize = b.standardOptimizeOption(.{});
+    cwd.deleteTree("zig-cache") catch |err| {
+        return err;
+    };
 
-    // const lib = b.addStaticLibrary(.{
-    //     .name = "zwix",
-    //     // In this case the main source file is merely a path, however, in more
-    //     // complicated build scripts, this could be a generated file.
-    //     .root_source_file = .{ .path = "src/root.zig" },
-    //     .target = target,
-    //     .optimize = optimize,
-    // });
-
-    // // This declares intent for the library to be installed into the standard
-    // // location when the user invokes the "install" step (the default step when
-    // // running `zig build`).
-    // b.installArtifact(lib);
-
-    // const exe = b.addExecutable(.{
-    //     .name = "zwix",
-    //     .root_source_file = .{ .path = "src/main.zig" },
-    //     .target = target,
-    //     .optimize = optimize,
-    // });
-
-    // // This declares intent for the executable to be installed into the
-    // // standard location when the user invokes the "install" step (the default
-    // // step when running `zig build`).
-    // b.installArtifact(exe);
-
-    // // This *creates* a Run step in the build graph, to be executed when another
-    // // step is evaluated that depends on it. The next line below will establish
-    // // such a dependency.
-    // const run_cmd = b.addRunArtifact(exe);
-
-    // // By making the run step depend on the install step, it will be run from the
-    // // installation directory rather than directly from within the cache directory.
-    // // This is not necessary, however, if the application depends on other installed
-    // // files, this ensures they will be present and in the expected location.
-    // run_cmd.step.dependOn(b.getInstallStep());
-
-    // // This allows the user to pass arguments to the application in the build
-    // // command itself, like this: `zig build run -- arg1 arg2 etc`
-    // if (b.args) |args| {
-    //     run_cmd.addArgs(args);
-    // }
-
-    // // This creates a build step. It will be visible in the `zig build --help` menu,
-    // // and can be selected like this: `zig build run`
-    // // This will evaluate the `run` step rather than the default, which is "install".
-    // const run_step = b.step("run", "Run the app");
-    // run_step.dependOn(&run_cmd.step);
-
-    // // Creates a step for unit testing. This only builds the test executable
-    // // but does not run it.
-    // const lib_unit_tests = b.addTest(.{
-    //     .root_source_file = .{ .path = "src/root.zig" },
-    //     .target = target,
-    //     .optimize = optimize,
-    // });
-
-    // const run_lib_unit_tests = b.addRunArtifact(lib_unit_tests);
-
-    // const exe_unit_tests = b.addTest(.{
-    //     .root_source_file = .{ .path = "src/main.zig" },
-    //     .target = target,
-    //     .optimize = optimize,
-    // });
-
-    // const run_exe_unit_tests = b.addRunArtifact(exe_unit_tests);
-
-    // // Similar to creating the run step earlier, this exposes a `test` step to
-    // // the `zig build --help` menu, providing a way for the user to request
-    // // running the unit tests.
-    // const test_step = b.step("test", "Run unit tests");
-    // test_step.dependOn(&run_lib_unit_tests.step);
-    // test_step.dependOn(&run_exe_unit_tests.step);
+    cwd.deleteTree("zig-out") catch |err| {
+        return err;
+    };
+    cwd.deleteFile("fs.img") catch |err| {
+        return err;
+    };
 }
