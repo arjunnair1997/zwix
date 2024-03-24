@@ -204,15 +204,8 @@ pub fn build(b: *std.Build) void {
 
 fn deleteFiles(_: *std.Build.Step, _: *std.Progress.Node) !void {
     const cwd = std.fs.cwd();
-
-    cwd.deleteTree("zig-cache") catch |err| {
-        return err;
-    };
-
-    cwd.deleteTree("zig-out") catch |err| {
-        return err;
-    };
-    cwd.deleteFile("fs.img") catch |err| {
-        return err;
-    };
+    cwd.deleteTree("zig-cache") catch {};
+    cwd.deleteTree("zig-out") catch {};
+    cwd.deleteFile("fs.img") catch {};
+    cwd.deleteFile("user/usys.S") catch {};
 }
