@@ -121,11 +121,7 @@ UPROGS=\
 -include kernel/*.d user/*.d
 
 clean: 
-	rm -f \
-	fs.img \
-	zig-out/mkfs/mkfs .gdbinit \
-        $U/usys.S \
-	$(UPROGS)
+	rm -f .gdbinit
 
 # try to generate a unique GDB port
 GDBPORT = $(shell expr `id -u` % 5000 + 25000)
